@@ -22,7 +22,7 @@ async function handleThread(req, res, postId = null) {
 
     if (!isBotRequest) {
         // Redirect real users to actual 4chan thread
-        return res.redirect(`https://boards.4chan.org/${board}/thread/${id}`);
+        return res.redirect(redirectUrl);
     }
 
     const apiUrl = `https://a.4cdn.org/${board}/thread/${id}.json`;
@@ -49,12 +49,15 @@ async function handleThread(req, res, postId = null) {
 
         const title = postId
             ? `Post #${postId.startsWith('p') ? postId.slice(1) : postId} in /${board.toUpperCase()}/ Thread #${id}`
-            : (targetPost.sub || `${board.toUpperCase()} Thread #${id}`);
+            : (targetPost.sub || `/${board.toUpperCase()}/ Thread #${id}`);
 
-        const description = sanitizeHtml(targetPost.com || "", {
+        // Convert <br> tags to newlines before sanitizing
+        const rawComment = targetPost.com || "";
+        const commentWithLineBreaks = rawComment.replace(/<br\s*\/?>/gi, '\n');
+        const description = sanitizeHtml(commentWithLineBreaks, {
             allowedTags: [],
             allowedAttributes: {}
-        }).slice(0, 200);
+        })
 
         res.send(`
             <!DOCTYPE html>
