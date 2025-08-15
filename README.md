@@ -4,6 +4,7 @@ Embed your favourite 4chan posts right onto dicksword or other media!
 
 ## why?
 \>le why? isn't 4chan already having embed header?
+
 That's correct, but vanilla embed sucks. It's too long and irrelevant, or plain missing features. They don't embed image of the post, putting the content of the post as the title, and worse of all, do not support embedding of comments in the thread.
 
 This is a lightweight and easy to understand solution. This solution truncates the name to make it more relevant (tldr lol), embed content and image from the OP as well as the comments in the OP.
