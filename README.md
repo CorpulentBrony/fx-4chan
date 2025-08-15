@@ -13,7 +13,7 @@ To do so, replace hash (#) with slash (/).
 i.e. `https://yourlink.org/s4s/thread/12470187/p12470355`
 
 ## How 2 host
-prerequisite: npm
+prerequisite: node.js
 
 \>run ```npm install``` to install dependencies
 
