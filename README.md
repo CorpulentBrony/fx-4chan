@@ -4,10 +4,12 @@
 
 ## How 2 use
 Have source link: `https://boards.4chan.org/s4s/thread/12470187`
+
 replace the url with your own: `https://yourlink.org/s4s/thread/12470187`
 
 ### Warning: due to a quirk in how urls are handled, we can't parse hash fragments (such as 12470187#p12470355)
 To do so, replace hash (#) with slash (/).
+
 i.e. `https://yourlink.org/s4s/thread/12470187/p12470355`
 
 ## How 2 host
