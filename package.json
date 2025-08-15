@@ -1,0 +1,19 @@
+{
+  "name": "fx4chan",
+  "version": "1.0.0",
+  "description": "A 4chan OP post embed proxy",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "node-fetch": "^3.3.2",
+    "sanitize-html": "^2.12.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
