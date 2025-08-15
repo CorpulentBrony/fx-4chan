@@ -31,7 +31,7 @@ Prerequisite: node.js
 
 \>run ```npm install``` to install dependencies
 
-\>run ``` npm start``` to start a server, default port 3000
+\>run ```npm start``` to start a server, default port 3000
 
 \>reverse proxy with nginx
 
