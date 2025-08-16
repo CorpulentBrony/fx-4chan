@@ -1,95 +1,82 @@
 export default {
-  async fetch(request, env, ctx) {
-    try {
-      const url = new URL(request.url);
-      const userAgent = request.headers.get("User-Agent") || "";
+	async fetch(request, env, ctx) {
+		const url = new URL(request.url);
+		const path = url.pathname;
+		const threadRegex = /^\/([^/]+)\/thread\/(\d+)(?:\/p(\d+))?$/;
+		const match = path.match(threadRegex);
 
-      // Root path => redirect to 4chan
-      if (url.pathname === "/") {
-        return Response.redirect("https://boards.4chan.org/", 302);
-      }
+		if (!match) {
+			if (path === "/") {
+				return Response.redirect("https://boards.4chan.org/", 302);
+			}
+			return new Response("Not Found", { status: 404 });
+		}
 
-      // Match routes: /:board/thread/:id and /:board/thread/:id/p:postId
-      const threadRegex = /^\/([^/]+)\/thread\/(\d+)(?:\/p(\d+))?$/;
-      const match = url.pathname.match(threadRegex);
+		const board = match[1];
+		const id = match[2];
+		const postId = match[3] || null;
 
-      if (!match) {
-        return new Response("Not Found", { status: 404 });
-      }
+		// Build redirect URL for human fallback
+		const redirectUrl = postId
+			? `https://boards.4chan.org/${board}/thread/${id}#p${postId}`
+			: `https://boards.4chan.org/${board}/thread/${id}`;
 
-      const board = match[1];
-      const id = match[2];
-      const postId = match[3] || null;
+		// Fetch the thread data
+		const apiUrl = `https://a.4cdn.org/${board}/thread/${id}.json`;
+		const apiRes = await fetch(apiUrl);
+		if (!apiRes.ok) {
+			return new Response("Thread not found", { status: 404 });
+		}
 
-      // Check if it's a bot/crawler (for embeds)
-      const isBotRequest = /bot|crawler|spider|facebook|twitter|discord|slack/i.test(userAgent);
+		const data = await apiRes.json();
+		let targetPost = data.posts[0];
+		if (postId) {
+			const found = data.posts.find((p) => p.no === parseInt(postId));
+			if (!found) return new Response("Post not found", { status: 404 });
+			targetPost = found;
+		}
 
-      const redirectUrl = postId
-        ? `https://boards.4chan.org/${board}/thread/${id}#p${postId}`
-        : `https://boards.4chan.org/${board}/thread/${id}`;
+		const imageUrl = targetPost.tim
+			? `https://i.4cdn.org/${board}/${targetPost.tim}${targetPost.ext}`
+			: null;
 
-      if (!isBotRequest) {
-        // Redirect real users to actual 4chan thread
-        return Response.redirect(redirectUrl, 302);
-      }
+		const title = postId
+			? `Post #${postId} in /${board.toUpperCase()}/ Thread #${id}`
+			: targetPost.sub || `/${board.toUpperCase()}/ Thread #${id}`;
 
-      // Otherwise fetch API data for bots
-      const apiUrl = `https://a.4cdn.org/${board}/thread/${id}.json`;
-      const apiRes = await fetch(apiUrl);
-      if (!apiRes.ok) {
-        return new Response("Thread not found", { status: 404 });
-      }
+		const rawComment = targetPost.com || "";
+		const commentWithBr = rawComment.replace(/<br\s*\/?>/gi, "\n");
+		const description = escapeHtml(commentWithBr.replace(/<[^>]+>/g, ""));
 
-      const data = await apiRes.json();
+		const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>${escapeHtml(title)}</title>
+	<meta property="og:title" content="${escapeHtml(title)}">
+	<meta property="og:description" content="${description}">
+	${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ""}
+	<meta name="twitter:card" content="summary_large_image">
+	${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ""}
+	<!-- Fallback redirect for humans -->
+	<meta http-equiv="refresh" content="0; url=${redirectUrl}">
+</head>
+<body>
+	<p>Redirecting to <a href="${redirectUrl}">${redirectUrl}</a>…</p>
+</body>
+</html>`;
 
-      let targetPost = data.posts[0]; // Default to OP
-      if (postId) {
-        const foundPost = data.posts.find((post) => post.no === parseInt(postId));
-        if (!foundPost) return new Response("Post not found", { status: 404 });
-        targetPost = foundPost;
-      }
-
-      const imageUrl = targetPost.tim
-        ? `https://i.4cdn.org/${board}/${targetPost.tim}${targetPost.ext}`
-        : null;
-
-      const title = postId
-        ? `Post #${postId} in /${board.toUpperCase()}/ Thread #${id}`
-        : targetPost.sub || `/${board.toUpperCase()}/ Thread #${id}`;
-
-      // Handle comment sanitization
-      const rawComment = targetPost.com || "";
-      const commentWithLineBreaks = rawComment.replace(/<br\s*\/?>/gi, "\n");
-      const description = commentWithLineBreaks.replace(/<[^>]+>/g, ""); // strip tags
-
-      const html = `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <meta property="og:title" content="${escapeHtml(title)}">
-            <meta property="og:description" content="${escapeHtml(description)}">
-            ${imageUrl ? `<meta property="og:image" content="${imageUrl}">` : ""}
-            <meta name="twitter:card" content="summary_large_image">
-            ${imageUrl ? `<meta name="twitter:image" content="${imageUrl}">` : ""}
-        </head>
-        </html>`;
-
-      return new Response(html, {
-        headers: { "content-type": "text/html; charset=utf-8" },
-      });
-    } catch (err) {
-      return new Response("Internal Error: " + err.message, { status: 500 });
-    }
-  },
+		return new Response(html, {
+			headers: { "content-type": "text/html; charset=utf-8" },
+		});
+	},
 };
 
-// Basic HTML escaping helper
-function escapeHtml(str) {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+function escapeHtml(text) {
+	return text
+		.replace(/&/g, "&amp;")
+		.replace(/</g, "&lt;")
+		.replace(/>/g, "&gt;")
+		.replace(/"/g, "&quot;")
+		.replace(/'/g, "&#39;");
 }
